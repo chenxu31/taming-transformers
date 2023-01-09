@@ -436,7 +436,7 @@ class Encoder(nn.Module):
 class Decoder(nn.Module):
     def __init__(self, *, ch, out_ch, ch_mult=(1,2,4,8), num_res_blocks,
                  attn_resolutions, dropout=0.0, resamp_with_conv=True, in_channels,
-                 resolution, z_channels, give_pre_end=False, **ignorekwargs):
+                 resolution, z_channels, give_pre_end=False, tanh_out=False, **ignorekwargs):
         super().__init__()
         self.ch = ch
         self.temb_ch = 0
@@ -445,6 +445,7 @@ class Decoder(nn.Module):
         self.resolution = resolution
         self.in_channels = in_channels
         self.give_pre_end = give_pre_end
+        self.tanh_out = tanh_out
 
         # compute in_ch_mult, block_in and curr_res at lowest res
         in_ch_mult = (1,)+tuple(ch_mult)
@@ -534,6 +535,8 @@ class Decoder(nn.Module):
         h = self.norm_out(h)
         h = nonlinearity(h)
         h = self.conv_out(h)
+        if self.tanh_out:
+            h = torch.tanh(h)
         return h
 
 
