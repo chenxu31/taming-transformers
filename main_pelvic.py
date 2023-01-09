@@ -103,6 +103,13 @@ def get_parser(**parser_kwargs):
         help="post-postfix for default name",
     )
     parser.add_argument(
+        "-l",
+        "--logdir",
+        type=str,
+        default="logs",
+        help="directory for logging dat shit",
+    )
+    parser.add_argument(
         "--batch_size",
         type=str,
         nargs="?",
@@ -419,7 +426,7 @@ if __name__ == "__main__":
         else:
             name = ""
         nowname = now+name+opt.postfix
-        logdir = os.path.join("logs", nowname)
+        logdir = os.path.join(opt.logdir, nowname)
 
     ckptdir = os.path.join(logdir, "checkpoints")
     cfgdir = os.path.join(logdir, "configs")
