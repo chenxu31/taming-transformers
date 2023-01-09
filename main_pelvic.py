@@ -107,7 +107,7 @@ def get_parser(**parser_kwargs):
         type=str,
         nargs="?",
         const=True,
-        default=12,
+        default=16,
         help="dataset dir",
     )
     parser.add_argument(
