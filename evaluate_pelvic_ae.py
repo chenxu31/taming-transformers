@@ -10,9 +10,7 @@ import numpy
 import platform
 import skimage.io
 import glob
-import ldm.models.autoencoder as autoencoder
 from omegaconf import OmegaConf
-from ldm.util import instantiate_from_config
 
 
 if platform.system() == 'Windows':
@@ -24,6 +22,12 @@ sys.path.append(UTIL_DIR)
 import common_metrics
 import common_pelvic_pt as common_pelvic
 import common_net_pt as common_net
+
+
+def instantiate_from_config(config):
+    if not "target" in config:
+        raise KeyError("Expected key `target` to instantiate.")
+    return get_obj_from_str(config["target"])(**config.get("params", dict()))
 
 
 def main(device, args):
