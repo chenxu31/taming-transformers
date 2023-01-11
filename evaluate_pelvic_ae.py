@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import importlib
 import os
 import sys
 import pdb
@@ -22,6 +23,14 @@ sys.path.append(UTIL_DIR)
 import common_metrics
 import common_pelvic_pt as common_pelvic
 import common_net_pt as common_net
+
+
+def get_obj_from_str(string, reload=False):
+    module, cls = string.rsplit(".", 1)
+    if reload:
+        module_imp = importlib.import_module(module)
+        importlib.reload(module_imp)
+    return getattr(importlib.import_module(module, package=None), cls)
 
 
 def instantiate_from_config(config):
