@@ -70,21 +70,11 @@ def main(device, args):
             if args.output_dir:
                 common_pelvic.save_nii(syn_im, os.path.join(args.output_dir, "syn_%d.nii.gz" % i))
 
-    """
-        syn_img, codes = model.forward(torch.tensor(test_img, device=device))
-    
-    syn_img = torch.clamp(syn_img, -1, 1)
-    syn_img = syn_img.detach().cpu().numpy()
-    pdb.set_trace()
-    if not os.path.exists(args.output_dir):
-        os.makedirs(args.output_dir)
+    msg = "psnr:%f/%f" % (psnr_list.mean(), psnr_list.std())
+    print(msg)
 
-        for i in range(syn_img.shape[0]):
-            skimage.io.imsave(os.path.join(args.output_dir, "ori_%d.jpg" % i), common_pelvic.data_restore(test_img[i, 0, :, :]))
-            skimage.io.imsave(os.path.join(args.output_dir, "syn_%d.jpg" % i), common_pelvic.data_restore(syn_img[i, 0, :, :]))
-    """
-
-    print("psnr:%f/%f" % (psnr_list.mean(), psnr_list.std()))
+    with open(os.path.join(args.output_dir, "results.txt"), "w") as f:
+        f.write(msg)
 
 
 if __name__ == '__main__':
