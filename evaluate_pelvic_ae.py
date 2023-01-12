@@ -51,8 +51,13 @@ def main(device, args):
     model.to(device)
     model.eval()
 
-    test_data, _, _, _ = common_pelvic.load_test_data(args.data_dir)
-    patch_shape = (1, test_data.shape[2], test_data.shape[3])
+    if args.modality == "ct":
+        test_data, _, _, _ = common_pelvic.load_test_data(args.data_dir)
+    elif args.modality == "cbct":
+        _, test_data, _, _ = common_pelvic.load_test_data(args.data_dir)
+    else:
+        assert 0
+    patch_shape = (config.model.params.ddconfig.in_channels, test_data.shape[2], test_data.shape[3])
 
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
@@ -63,7 +68,7 @@ def main(device, args):
             syn_im = common_net.produce_results(device, model, [patch_shape, ], [test_data[i], ],
                                                 data_shape=test_data.shape[1:], patch_shape=patch_shape, is_seg=False,
                                                 batch_size=16)
-            
+            pdb.set_trace()
             syn_im = syn_im.clip(-1, 1)
             psnr_list[i] = common_metrics.psnr(syn_im, test_data[i])
 
@@ -83,6 +88,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_dir', type=str, default=r'/home/chenxu/datasets/pelvic/h5_data_nonrigid/', help='path of the dataset')
     parser.add_argument('--log_dir', type=str, default=r'/home/chenxu/training/logs/taming/ae_ct_vq/2023-01-09T21-58-22_pelvic_vqgan', help="checkpoint file dir")
     parser.add_argument('--output_dir', type=str, default='/home/chenxu/training/test_output/taming/ae_ct_vq', help="the output directory")
+    parser.add_argument('--modality', type=str, default='ct', choices=["ct", "cbct"], help="the output directory")
 
     args = parser.parse_args()
 
