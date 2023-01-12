@@ -112,6 +112,7 @@ def get_parser(**parser_kwargs):
     parser.add_argument(
         "--batch_size",
         type=int,
+        nargs="?",
         const=True,
         default=16,
         help="dataset dir",
@@ -119,6 +120,7 @@ def get_parser(**parser_kwargs):
     parser.add_argument(
         "--max_epochs",
         type=int,
+        nargs="?",
         const=True,
         default=300,
         help="max training epochs",
