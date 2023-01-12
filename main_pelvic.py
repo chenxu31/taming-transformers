@@ -118,14 +118,6 @@ def get_parser(**parser_kwargs):
         help="dataset dir",
     )
     parser.add_argument(
-        "--max_epochs",
-        type=int,
-        nargs="?",
-        const=True,
-        default=300,
-        help="max training epochs",
-    )
-    parser.add_argument(
         "--data_dir",
         type=str,
         nargs="?",
