@@ -521,8 +521,8 @@ if __name__ == "__main__":
         trainer = Trainer.from_argparse_args(trainer_opt, **trainer_kwargs)
 
         # data
-        pelvic_dataset = common_pelvic.Dataset(opt.data_dir, opt.modality)
-        data = DataLoader(pelvic_dataset, batch_size=opt.batch_size, shuffle=True, num_workers=4, pin_memory=True)
+        pelvic_dataset = common_pelvic.Dataset(opt.data_dir, opt.modality, n_slices=config.model.params.ddconfig.in_channels)
+        data = DataLoader(pelvic_dataset, batch_size=opt.batch_size, shuffle=True, pin_memory=True)
 
         # configure learning rate
         bs, base_lr = opt.batch_size, config.model.base_learning_rate
