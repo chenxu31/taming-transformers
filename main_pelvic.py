@@ -14,6 +14,14 @@ import pdb
 import h5py
 
 
+if platform.system() == 'Windows':
+    sys.path.append(r"E:\我的坚果云\sourcecode\python\util")
+else:
+    sys.path.append("/home/chenxu/我的坚果云/sourcecode/python/util")
+
+import common_pelvic_pt as common_pelvic
+
+
 def get_obj_from_str(string, reload=False):
     module, cls = string.rsplit(".", 1)
     if reload:
@@ -161,40 +169,6 @@ class WrappedDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.data[idx]
-
-
-class PelvicDataset(Dataset):
-    def __init__(self, data_dir, modality):
-        assert modality in ("ct", "cbct")
-
-        self.data_dir = data_dir
-        self.modality = modality
-        self.load_data()
-
-        self.MIN_VALUE = -1024
-        self.MAX_VALUE = 1024
-
-    def __len__(self):
-        return self.num_subjects * self.num_depths
-
-    def __getitem__(self, idx):
-        subject_id = idx // self.num_depths
-        depth_id = idx % self.num_depths
-
-        image = np.array(self.data_f["data"][subject_id, depth_id: depth_id + 1, :, :])
-        image = self.normalize(image).transpose((1, 2, 0))
-
-        return {
-            "image": torch.from_numpy(image),
-        }
-
-    def load_data(self):
-        self.data_f = h5py.File(
-            os.path.join(self.data_dir, "train_%s.h5" % ("plan" if self.modality == "ct" else "treat")), "r")
-        self.num_subjects, self.num_depths = self.data_f["data"].shape[0:2]
-
-    def normalize(self, img):
-        return (img.astype(np.float32) - self.MIN_VALUE) * 2. / (self.MAX_VALUE - self.MIN_VALUE) - 1.
 
 
 class SetupCallback(Callback):
@@ -545,8 +519,8 @@ if __name__ == "__main__":
         trainer = Trainer.from_argparse_args(trainer_opt, **trainer_kwargs)
 
         # data
-        pelvic_dataset = PelvicDataset(opt.data_dir, opt.modality)
-        data = DataLoader(pelvic_dataset, batch_size=opt.batch_size, shuffle=True)
+        pelvic_dataset = common_pelvic.Dataset(opt.data_dir, opt.modality)
+        data = DataLoader(pelvic_dataset, batch_size=opt.batch_size, shuffle=True, pin_memory=True)
 
         # configure learning rate
         bs, base_lr = opt.batch_size, config.model.base_learning_rate
