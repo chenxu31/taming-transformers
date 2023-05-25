@@ -1,3 +1,5 @@
+import pdb
+
 import torch
 import torch.nn.functional as F
 import pytorch_lightning as pl
@@ -6,7 +8,9 @@ import importlib
 #from main import instantiate_from_config
 
 from taming.modules.diffusionmodules.model import Encoder, Decoder
+from taming.modules.diffusionmodules.model3D import Encoder3D, Decoder3D
 from taming.modules.vqvae.quantize import VectorQuantizer2 as VectorQuantizer
+from taming.modules.vqvae.quantize import VectorQuantizer3D
 from taming.modules.vqvae.quantize import GumbelQuantize
 from taming.modules.vqvae.quantize import EMAVectorQuantizer
 
@@ -171,6 +175,52 @@ class VQModel(pl.LightningModule):
         x = F.conv2d(x, weight=self.colorize)
         x = 2.*(x-x.min())/(x.max()-x.min()) - 1.
         return x
+
+
+class VQModel3D(VQModel):
+    def __init__(self,
+                 ddconfig,
+                 lossconfig,
+                 n_embed,
+                 embed_dim,
+                 ckpt_path=None,
+                 ignore_keys=[],
+                 image_key="image",
+                 colorize_nlabels=None,
+                 monitor=None,
+                 remap=None,
+                 sane_index_shape=False,  # tell vector quantizer to return indices as bhw
+                 ):
+        super(VQModel, self).__init__()
+        self.image_key = image_key
+        self.encoder = Encoder3D(**ddconfig)
+        self.decoder = Decoder3D(**ddconfig)
+        self.loss = instantiate_from_config(lossconfig)
+        self.quantize = VectorQuantizer3D(n_embed, embed_dim, beta=0.25,
+                                          remap=remap, sane_index_shape=sane_index_shape)
+        self.quant_conv = torch.nn.Conv3d(ddconfig["z_channels"], embed_dim, 1)
+        self.post_quant_conv = torch.nn.Conv3d(embed_dim, ddconfig["z_channels"], 1)
+        if ckpt_path is not None:
+            self.init_from_ckpt(ckpt_path, ignore_keys=ignore_keys)
+        self.image_key = image_key
+        if colorize_nlabels is not None:
+            assert type(colorize_nlabels)==int
+            self.register_buffer("colorize", torch.randn(3, colorize_nlabels, 1, 1))
+        if monitor is not None:
+            self.monitor = monitor
+
+    def get_input(self, batch, k):
+        x = batch[k]
+        return x.unsqueeze(1)
+
+    def log_images(self, batch, **kwargs):
+        log = dict()
+        x = self.get_input(batch, self.image_key)
+        x = x.to(self.device)
+        xrec, _ = self(x)
+        log["inputs"] = x[:, :, 0, :, :] # TODO
+        log["reconstructions"] = xrec[:, :, 0, :, :]
+        return log
 
 
 class VQSegmentationModel(VQModel):
