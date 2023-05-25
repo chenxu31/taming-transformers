@@ -401,7 +401,8 @@ if __name__ == "__main__":
         else:
             name = ""
         nowname = now+name+opt.postfix
-        logdir = os.path.join(opt.logdir, nowname)
+        #logdir = os.path.join(opt.logdir, nowname)
+        logdir = opt.logdir
 
     ckptdir = os.path.join(logdir, "checkpoints")
     cfgdir = os.path.join(logdir, "configs")
