@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 import pytorch_lightning as pl
+import importlib 
 
 #from main import instantiate_from_config
 
@@ -90,10 +91,11 @@ class VQModel(pl.LightningModule):
 
     def get_input(self, batch, k):
         x = batch[k]
-        if len(x.shape) == 3:
-            x = x[..., None]
-        x = x.permute(0, 3, 1, 2).to(memory_format=torch.contiguous_format)
-        return x.float()
+        #if len(x.shape) == 3:
+        #    x = x[..., None]
+        #x = x.permute(0, 3, 1, 2).to(memory_format=torch.contiguous_format)
+        #return x.float()
+        return x
 
     def training_step(self, batch, batch_idx, optimizer_idx):
         x = self.get_input(batch, self.image_key)

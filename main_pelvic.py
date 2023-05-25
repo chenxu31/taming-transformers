@@ -10,6 +10,7 @@ from pytorch_lightning import seed_everything
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint, Callback, LearningRateMonitor
 from pytorch_lightning.utilities import rank_zero_only
+import platform
 import pdb
 import h5py
 
@@ -520,7 +521,7 @@ if __name__ == "__main__":
 
         # data
         pelvic_dataset = common_pelvic.Dataset(opt.data_dir, opt.modality)
-        data = DataLoader(pelvic_dataset, batch_size=opt.batch_size, shuffle=True, pin_memory=True)
+        data = DataLoader(pelvic_dataset, batch_size=opt.batch_size, shuffle=True, num_workers=4, pin_memory=True)
 
         # configure learning rate
         bs, base_lr = opt.batch_size, config.model.base_learning_rate
