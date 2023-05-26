@@ -483,6 +483,8 @@ if __name__ == "__main__":
             "params": {
                 "dirpath": ckptdir,
                 "filename": "last",
+                "every_n_epochs": 1,
+                "save_top_k": -1,
                 "verbose": False,
                 "save_last": True,
             }
