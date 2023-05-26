@@ -189,6 +189,12 @@ class SetupCallback(Callback):
             ckpt_path = os.path.join(self.ckptdir, "last.ckpt")
             trainer.save_checkpoint(ckpt_path)
 
+    def on_epoch_end(self, trainer, pl_module):
+        if trainer.global_rank == 0:
+            print("Summoning checkpoint.")
+            ckpt_path = os.path.join(self.ckptdir, "last.ckpt")
+            trainer.save_checkpoint(ckpt_path)
+
     def on_pretrain_routine_start(self, trainer, pl_module):
         if trainer.global_rank == 0:
             # Create logdirs and save configs
@@ -478,7 +484,6 @@ if __name__ == "__main__":
                 "dirpath": ckptdir,
                 "filename": "last",
                 "verbose": False,
-                "every_n_epochs": 10,
                 "save_last": True,
             }
         }
