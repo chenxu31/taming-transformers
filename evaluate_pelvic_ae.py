@@ -12,6 +12,7 @@ import platform
 import skimage.io
 import glob
 from omegaconf import OmegaConf
+from taming.models.vqgan import VQModel
 
 
 if platform.system() == 'Windows':
@@ -40,6 +41,7 @@ def instantiate_from_config(config):
 
 
 def main(device, args):
+    """
     ckpt_file = os.path.join(args.log_dir, "checkpoints", "last.ckpt")
     
     config_files = sorted(glob.glob(os.path.join(args.log_dir, "configs/*.yaml")))
@@ -50,6 +52,22 @@ def main(device, args):
     model.init_from_ckpt(ckpt_file)
     model.to(device)
     model.eval()
+    """
+
+    ckpt_file = os.path.join(args.log_dir, "checkpoints", "last.ckpt")
+    config_files = sorted(glob.glob(os.path.join(args.log_dir, "configs", "*.yaml")))
+    configs = [OmegaConf.load(cfg) for cfg in config_files]
+    config = OmegaConf.merge(*configs).model
+    model = VQModel(ddconfig=config.params.ddconfig,
+                    n_embed=config.params.n_embed,
+                    embed_dim=config.params.embed_dim,
+                    ckpt_path=ckpt_file)
+    pdb.set_trace()
+    for param in model.parameters():
+        param.requires_grad = False
+
+    model.eval()
+
 
     if args.modality == "ct":
         test_data, _, _, _ = common_pelvic.load_test_data(args.data_dir)
@@ -68,7 +86,6 @@ def main(device, args):
             syn_im = common_net.produce_results(device, model, [patch_shape, ], [test_data[i], ],
                                                 data_shape=test_data.shape[1:], patch_shape=patch_shape, is_seg=False,
                                                 batch_size=16)
-            pdb.set_trace()
             syn_im = syn_im.clip(-1, 1)
             psnr_list[i] = common_metrics.psnr(syn_im, test_data[i])
 
