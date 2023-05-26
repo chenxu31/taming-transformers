@@ -18,7 +18,7 @@ from taming.models.vqgan import VQModel
 if platform.system() == 'Windows':
     UTIL_DIR = r"E:\我的坚果云\sourcecode\python\util"
 else:
-    UTIL_DIR = r"/home/chenxu/Nutstore Files/我的坚果云/sourcecode/python/util"
+    UTIL_DIR = r"/home/chenxu/我的坚果云/sourcecode/python/util"
 
 sys.path.append(UTIL_DIR)
 import common_metrics
@@ -41,33 +41,20 @@ def instantiate_from_config(config):
 
 
 def main(device, args):
-    """
-    ckpt_file = os.path.join(args.log_dir, "checkpoints", "last.ckpt")
-    
-    config_files = sorted(glob.glob(os.path.join(args.log_dir, "configs/*.yaml")))
-    configs = [OmegaConf.load(cfg) for cfg in config_files]
-    #cli = OmegaConf.from_dotlist(unknown)
-    config = OmegaConf.merge(*configs)#, cli)
-    model = instantiate_from_config(config.model)
-    model.init_from_ckpt(ckpt_file)
-    model.to(device)
-    model.eval()
-    """
-
     ckpt_file = os.path.join(args.log_dir, "checkpoints", "last.ckpt")
     config_files = sorted(glob.glob(os.path.join(args.log_dir, "configs", "*.yaml")))
     configs = [OmegaConf.load(cfg) for cfg in config_files]
     config = OmegaConf.merge(*configs).model
     model = VQModel(ddconfig=config.params.ddconfig,
+                    lossconfig=config.params.lossconfig,
                     n_embed=config.params.n_embed,
                     embed_dim=config.params.embed_dim,
                     ckpt_path=ckpt_file)
-    pdb.set_trace()
     for param in model.parameters():
         param.requires_grad = False
 
     model.eval()
-
+    model.to(device)
 
     if args.modality == "ct":
         test_data, _, _, _ = common_pelvic.load_test_data(args.data_dir)
@@ -75,7 +62,7 @@ def main(device, args):
         _, test_data, _, _ = common_pelvic.load_test_data(args.data_dir)
     else:
         assert 0
-    patch_shape = (config.model.params.ddconfig.in_channels, test_data.shape[2], test_data.shape[3])
+    patch_shape = (config.params.ddconfig.in_channels, test_data.shape[2], test_data.shape[3])
 
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
