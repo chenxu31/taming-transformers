@@ -70,7 +70,7 @@ def main(device, args):
     psnr_list = numpy.zeros((test_data.shape[0],), numpy.float32)
     with torch.no_grad():
         for i in range(test_data.shape[0]):
-            syn_im = common_net.produce_results_3D(device, lambda x: model(x.unsqueeze(1)).squeeze(1),
+            syn_im = common_net.produce_results_3D(device, lambda x: model(x.unsqueeze(1))[0].squeeze(1),
                                                    [patch_shape, ], [test_data[i], ],
                                                    data_shape=test_data.shape[1:], patch_shape=patch_shape, is_seg=False,
                                                    batch_size=16)
