@@ -5,6 +5,14 @@ import torch.nn as nn
 from taming.modules.util import ActNorm, ActNorm3D
 
 
+if platform.system() == 'Windows':
+    sys.path.append(r"E:\我的坚果云\sourcecode\python\util")
+else:
+    sys.path.append("/home/chenxu/我的坚果云/sourcecode/python/util")
+
+import common_pelvic_pt as common_pelvic
+
+
 def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Conv') != -1:
@@ -98,7 +106,8 @@ class NLayerDiscriminator3D(nn.Module):
             nf_mult_prev = nf_mult
             nf_mult = min(2 ** n, 8)
             sequence += [
-                nn.Conv3d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=2, padding=padw, bias=use_bias),
+                common_net.depthwise_conv(ndf * nf_mult_prev, ndf * nf_mult, dim=3, kernel_size=kw, stride=2, padding=padw),
+                #nn.Conv3d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=2, padding=padw, bias=use_bias),
                 norm_layer(ndf * nf_mult),
                 nn.LeakyReLU(0.2, True)
             ]
@@ -106,7 +115,8 @@ class NLayerDiscriminator3D(nn.Module):
         nf_mult_prev = nf_mult
         nf_mult = min(2 ** n_layers, 8)
         sequence += [
-            nn.Conv3d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=1, padding=padw, bias=use_bias),
+            common_net.depthwise_conv(ndf * nf_mult_prev, ndf * nf_mult, dim=3, kernel_size=kw, stride=1, padding=padw),
+            #nn.Conv3d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=1, padding=padw, bias=use_bias),
             norm_layer(ndf * nf_mult),
             nn.LeakyReLU(0.2, True)
         ]
