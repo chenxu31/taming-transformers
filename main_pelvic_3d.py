@@ -537,7 +537,10 @@ if __name__ == "__main__":
         # data
         patch_size = config.model.params.ddconfig.resolution
         pelvic_dataset = common_pelvic.Dataset3D(opt.data_dir, opt.modality, patch_size=patch_size, stride=patch_size // 4)
-        data = DataLoader(pelvic_dataset, batch_size=opt.batch_size, shuffle=True, pin_memory=True)
+        data = DataLoader(pelvic_dataset, batch_size=opt.batch_size, shuffle=True, pin_memory=True, drop_last=True)
+
+        val_dataset = common_pelvic.Dataset3D(opt.data_dir, opt.modality, phase="val", patch_size=patch_size, stride=patch_size // 4)
+        val_data = DataLoader(val_dataset, batch_size=4, shuffle=True, pin_memory=True, drop_last=True)
 
         # configure learning rate
         bs, base_lr = opt.batch_size, config.model.base_learning_rate
@@ -575,7 +578,7 @@ if __name__ == "__main__":
         # run
         if opt.train:
             try:
-                trainer.fit(model, data)
+                trainer.fit(model, data, val_dataloaders=val_data)
             except Exception:
                 melk()
                 raise
