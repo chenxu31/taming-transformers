@@ -5,6 +5,14 @@ import torch.nn as nn
 from taming.modules.util import ActNorm, ActNorm3D
 
 
+if platform.system() == 'Windows':
+    sys.path.append(r"E:\我的坚果云\sourcecode\python\util")
+else:
+    sys.path.append("/home/chenxu/我的坚果云/sourcecode/python/util")
+
+import common_net_pt as common_net
+
+
 def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Conv') != -1:
@@ -71,7 +79,7 @@ class NLayerDiscriminator3D(nn.Module):
     """Defines a PatchGAN discriminator as in Pix2Pix
         --> see https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/models/networks.py
     """
-    def __init__(self, input_nc=3, ndf=64, n_layers=3, use_actnorm=False):
+    def __init__(self, input_nc=3, ndf=32, n_layers=3, use_actnorm=False):
         """Construct a PatchGAN discriminator
         Parameters:
             input_nc (int)  -- the number of channels in input images
@@ -85,9 +93,9 @@ class NLayerDiscriminator3D(nn.Module):
         else:
             norm_layer = ActNorm3D
         if type(norm_layer) == functools.partial:  # no need to use bias as BatchNorm2d has affine parameters
-            use_bias = norm_layer.func != nn.BatchNorm2d
+            use_bias = norm_layer.func != nn.GroupNorm
         else:
-            use_bias = norm_layer != nn.BatchNorm2d
+            use_bias = norm_layer != nn.GroupNorm
 
         kw = 4
         padw = 1
@@ -98,7 +106,9 @@ class NLayerDiscriminator3D(nn.Module):
             nf_mult_prev = nf_mult
             nf_mult = min(2 ** n, 8)
             sequence += [
-                nn.Conv3d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=2, padding=padw, bias=use_bias),
+                #nn.Conv3d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=2, padding=padw, bias=use_bias),
+                common_net.depthwise_conv(ndf * nf_mult_prev, ndf * nf_mult, dim=3, kernel_size=kw, stride=2,
+                                          padding=padw, bias=use_bias),
                 norm_layer(ndf * nf_mult),
                 nn.LeakyReLU(0.2, True)
             ]
@@ -106,7 +116,9 @@ class NLayerDiscriminator3D(nn.Module):
         nf_mult_prev = nf_mult
         nf_mult = min(2 ** n_layers, 8)
         sequence += [
-            nn.Conv3d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=1, padding=padw, bias=use_bias),
+            #nn.Conv3d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=1, padding=padw, bias=use_bias),
+            common_net.depthwise_conv(ndf * nf_mult_prev, ndf * nf_mult, dim=3, kernel_size=kw, stride=1, padding=padw,
+                                      bias=use_bias),
             norm_layer(ndf * nf_mult),
             nn.LeakyReLU(0.2, True)
         ]
