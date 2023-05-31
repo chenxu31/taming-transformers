@@ -1,5 +1,6 @@
 import functools
 import torch.nn as nn
+import platform
 
 
 from taming.modules.util import ActNorm, ActNorm3D
