@@ -76,7 +76,7 @@ class VQModel(pl.LightningModule):
         h = self.encoder(x)
         h = self.quant_conv(h)
         quant, emb_loss, info = self.quantize(h)
-        return quant, emb_loss, info
+        return quant, emb_loss, info, h
 
     def decode(self, quant):
         quant = self.post_quant_conv(quant)
