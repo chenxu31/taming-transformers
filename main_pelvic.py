@@ -358,6 +358,8 @@ if __name__ == "__main__":
 
     now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
 
+    print("".join("%s " % x for x in sys.argv))
+
     # add cwd for convenience and to make classes in this file available when
     # running as `python main.py`
     # (in particular `main.DataModuleFromConfig`)
@@ -521,8 +523,8 @@ if __name__ == "__main__":
         trainer = Trainer.from_argparse_args(trainer_opt, **trainer_kwargs)
 
         # data
-        pelvic_dataset = common_pelvic.Dataset(opt.data_dir, opt.modality, n_slices=config.model.params.ddconfig.in_channels)
-        data = DataLoader(pelvic_dataset, batch_size=opt.batch_size, shuffle=True, pin_memory=True)
+        pelvic_dataset = common_pelvic.Dataset(opt.data_dir, opt.modality, n_slices=config.model.params.ddconfig.in_channels, data_augment=True)
+        data = DataLoader(pelvic_dataset, batch_size=opt.batch_size, shuffle=True, pin_memory=True, drop_last=True)
 
         # configure learning rate
         bs, base_lr = opt.batch_size, config.model.base_learning_rate
