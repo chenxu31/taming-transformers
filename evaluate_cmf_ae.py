@@ -82,6 +82,7 @@ def main(device, args):
     msg = "psnr:%f/%f" % (psnr_list.mean(), psnr_list.std())
     print(msg)
 
+    numpy.save(os.path.join(args.output_dir, "psnr.npy"), psnr_list)
     with open(os.path.join(args.output_dir, "results.txt"), "w") as f:
         f.write(msg)
 
