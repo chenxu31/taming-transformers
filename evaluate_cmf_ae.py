@@ -56,10 +56,10 @@ def main(device, args):
     model.eval()
     model.to(device)
 
-    if args.modality == "ct":
-        test_data, _, _, _ = common_cmf.load_test_data(args.data_dir)
-    elif args.modality == "mri":
-        _, test_data, _, _ = common_cmf.load_test_data(args.data_dir)
+    if args.modality == "mri":
+        test_data, _, _ = common_cmf.load_test_data(args.data_dir)
+    elif args.modality == "ct":
+        _, test_data, _ = common_cmf.load_test_data(args.data_dir)
     else:
         assert 0
     patch_shape = (config.params.ddconfig.in_channels, test_data.shape[2], test_data.shape[3])
