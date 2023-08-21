@@ -131,7 +131,7 @@ def get_parser(**parser_kwargs):
         type=str,
         nargs="?",
         const=True,
-        default=r"/home/chenxu/datasets/pelvic/h5_data_nonrigid",
+        default=r"/home/chenxu/datasets/cmf",
         help="dataset dir",
     )
     parser.add_argument(
@@ -140,7 +140,7 @@ def get_parser(**parser_kwargs):
         nargs="?",
         const=True,
         default="ct",
-        choices=["ct", "cbct"],
+        choices=["ct", "mri"],
         help="modality",
     )
 
@@ -525,6 +525,7 @@ if __name__ == "__main__":
         # data
         cmf_dataset = common_cmf.Dataset(opt.data_dir, opt.modality, n_slices=config.model.params.ddconfig.in_channels, data_augment=True)
         data = DataLoader(cmf_dataset, batch_size=opt.batch_size, shuffle=True, pin_memory=True, drop_last=True)
+        print(opt.batch_size, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
 
         # configure learning rate
         bs, base_lr = opt.batch_size, config.model.base_learning_rate
