@@ -76,8 +76,10 @@ def main(device, args):
             syn_im = syn_im.clip(-1, 1)
             psnr_list[i] = common_metrics.psnr(syn_im, test_data[i])
 
+            """
             if args.output_dir:
                 common_brats.save_nii(syn_im, os.path.join(args.output_dir, "syn_%d.nii.gz" % i))
+            """
 
     msg = "psnr:%f/%f" % (psnr_list.mean(), psnr_list.std())
     print(msg)
@@ -90,8 +92,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--gpu', type=int, default=0, help="gpu device id")
     parser.add_argument('--data_dir', type=str, default=r'/home/chenxu/datasets/brats/h5_data', help='path of the dataset')
-    parser.add_argument('--log_dir', type=str, default=r'/home/chenxu/training/logs/taming/ae_t1_vq/2023-01-09T21-58-22_pelvic_vqgan', help="checkpoint file dir")
-    parser.add_argument('--output_dir', type=str, default='/home/chenxu/training/test_output/taming/ae_t1_vq', help="the output directory")
+    parser.add_argument('--log_dir', type=str, default=r'/home/chenxu/training/checkpoints/vqgan/brats/t1_n1/', help="checkpoint file dir")
+    parser.add_argument('--output_dir', type=str, default='/home/chenxu/training/test_output/vqgan/brats/ae_t1', help="the output directory")
     parser.add_argument('--modality', type=str, default='t1', choices=["t1", "t2"], help="the output directory")
 
     args = parser.parse_args()
