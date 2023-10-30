@@ -320,9 +320,9 @@ class Validation(Callback):
         self.n_slices = n_slices
 
         if modality == "ct":
-            self.val_data, _, _, _ = common_pelvic.load_test_data(data_dir, "val")
+            self.val_data, _, _, _ = common_pelvic.load_test_data(data_dir)
         elif modality == "cbct":
-            _, self.val_data, _, _ = common_pelvic.load_test_data(data_dir, "val")
+            _, self.val_data, _, _ = common_pelvic.load_test_data(data_dir)
         else:
             assert 0
 
@@ -330,7 +330,7 @@ class Validation(Callback):
         pl_module.eval()
 
         patch_shape = (self.n_slices, self.val_data.shape[2], self.val_data.shape[3])
-        psnr_list = numpy.zeros((self.val_data.shape[0],), numpy.float32)
+        psnr_list = np.zeros((self.val_data.shape[0],), np.float32)
         with torch.no_grad():
             for i in range(self.val_data.shape[0]):
                 syn_im = common_net.produce_results(pl_module.device, pl_module, [patch_shape, ], [self.val_data[i], ],
@@ -537,7 +537,7 @@ if __name__ == "__main__":
                 }
             },
             "validation": {
-                "target": "main_brats.Validation",
+                "target": "main_pelvic.Validation",
                 "params": {
                     "data_dir": opt.data_dir,
                     "modality": opt.modality,

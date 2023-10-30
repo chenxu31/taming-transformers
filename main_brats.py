@@ -20,6 +20,8 @@ if platform.system() == 'Windows':
 else:
     sys.path.append("/home/chenxu/我的坚果云/sourcecode/python/util")
 
+import common_metrics
+import common_net_pt as common_net
 import common_brats
 
 
@@ -328,14 +330,12 @@ class Validation(Callback):
         pl_module.eval()
 
         patch_shape = (self.n_slices, self.val_data.shape[2], self.val_data.shape[3])
-        psnr_list = numpy.zeros((self.val_data.shape[0],), numpy.float32)
+        psnr_list = np.zeros((self.val_data.shape[0],), np.float32)
         with torch.no_grad():
             for i in range(self.val_data.shape[0]):
                 syn_im = common_net.produce_results(pl_module.device, pl_module, [patch_shape, ], [self.val_data[i], ],
                                                     data_shape=self.val_data.shape[1:], patch_shape=patch_shape,
                                                     is_seg=False, batch_size=16)
-                pdb.set_trace()
-                syn_im = syn_im.clip(-1, 1)
                 psnr_list[i] = common_metrics.psnr(syn_im, self.val_data[i])
 
         print("Val psnr:%f/%f" % (psnr_list.mean(), psnr_list.std()))
