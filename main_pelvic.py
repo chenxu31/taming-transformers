@@ -20,6 +20,8 @@ if platform.system() == 'Windows':
 else:
     sys.path.append("/home/chenxu/我的坚果云/sourcecode/python/util")
 
+import common_net_pt as common_net
+import common_metrics
 import common_pelvic_pt as common_pelvic
 
 
@@ -313,6 +315,32 @@ class ImageLogger(Callback):
         self.log_img(pl_module, batch, batch_idx, split="val")
 
 
+class Validation(Callback):
+    def __init__(self, data_dir, modality, n_slices):
+        self.n_slices = n_slices
+
+        if modality == "ct":
+            self.val_data, _, _, _ = common_pelvic.load_test_data(data_dir, "val")
+        elif modality == "cbct":
+            _, self.val_data, _, _ = common_pelvic.load_test_data(data_dir, "val")
+        else:
+            assert 0
+
+    def on_train_epoch_end(self, trainer, pl_module):
+        pl_module.eval()
+
+        patch_shape = (self.n_slices, self.val_data.shape[2], self.val_data.shape[3])
+        psnr_list = numpy.zeros((self.val_data.shape[0],), numpy.float32)
+        with torch.no_grad():
+            for i in range(self.val_data.shape[0]):
+                syn_im = common_net.produce_results(pl_module.device, pl_module, [patch_shape, ], [self.val_data[i], ],
+                                                    data_shape=self.val_data.shape[1:], patch_shape=patch_shape,
+                                                    is_seg=False, batch_size=16)
+                psnr_list[i] = common_metrics.psnr(syn_im, self.val_data[i])
+
+        print("Val psnr:%f/%f" % (psnr_list.mean(), psnr_list.std()))
+        pl_module.train()
+
 
 if __name__ == "__main__":
     # custom parser to specify config files, train, test and debug mode,
@@ -506,6 +534,14 @@ if __name__ == "__main__":
                     "batch_frequency": 750,
                     "max_images": 4,
                     "clamp": True
+                }
+            },
+            "validation": {
+                "target": "main_brats.Validation",
+                "params": {
+                    "data_dir": opt.data_dir,
+                    "modality": opt.modality,
+                    "n_slices": config.model.params.ddconfig.in_channels,
                 }
             },
             "learning_rate_logger": {
