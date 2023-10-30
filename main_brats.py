@@ -314,13 +314,32 @@ class ImageLogger(Callback):
 
 
 class Validation(Callback):
-    def __init__(self):
-        print("init validation callback")
+    def __init__(self, data_dir, modality, n_slices):
+        self.n_slices = n_slices
 
-    def on_train_epoch_end(self, *args, **kwargs):
-        print("train epoch end")
-        pdb.set_trace()
-        print("xxxxx")
+        if modality == "t1":
+            self.val_data, _ = common_brats.load_test_data(data_dir, "val")
+        elif modality == "t2":
+            _, self.val_data = common_brats.load_test_data(data_dir, "val")
+        else:
+            assert 0
+
+    def on_train_epoch_end(self, trainer, pl_module):
+        pl_module.eval()
+
+        patch_shape = (self.n_slices, self.val_data.shape[2], self.val_data.shape[3])
+        psnr_list = numpy.zeros((self.val_data.shape[0],), numpy.float32)
+        with torch.no_grad():
+            for i in range(self.val_data.shape[0]):
+                syn_im = common_net.produce_results(pl_module.device, pl_module, [patch_shape, ], [self.val_data[i], ],
+                                                    data_shape=self.val_data.shape[1:], patch_shape=patch_shape,
+                                                    is_seg=False, batch_size=16)
+                pdb.set_trace()
+                syn_im = syn_im.clip(-1, 1)
+                psnr_list[i] = common_metrics.psnr(syn_im, self.val_data[i])
+
+        print("Val psnr:%f/%f" % (psnr_list.mean(), psnr_list.std()))
+        pl_module.train()
 
 
 if __name__ == "__main__":
@@ -526,6 +545,9 @@ if __name__ == "__main__":
             "validation": {
                 "target": "main_brats.Validation",
                 "params": {
+                    "data_dir": opt.data_dir,
+                    "modality": opt.modality,
+                    "n_slices": config.model.params.ddconfig.in_channels,
                 }
             },
             "learning_rate_logger": {
