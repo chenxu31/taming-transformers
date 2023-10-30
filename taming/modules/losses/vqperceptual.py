@@ -24,6 +24,13 @@ def hinge_d_loss(logits_real, logits_fake):
     return d_loss
 
 
+def leastsquare_d_loss(logits_real, logits_fake):
+    loss_real = torch.mean(torch.square(logits_real - 1.))
+    loss_fake = torch.mean(torch.square(logits_fake))
+    d_loss = 0.5 * (loss_real + loss_fake)
+    return d_loss
+
+
 def vanilla_d_loss(logits_real, logits_fake):
     d_loss = 0.5 * (
         torch.mean(torch.nn.functional.softplus(-logits_real)) +
@@ -37,7 +44,7 @@ class VQLPIPSWithDiscriminator(nn.Module):
                  perceptual_weight=1.0, use_actnorm=False, disc_conditional=False,
                  disc_ndf=64, disc_loss="hinge"):
         super().__init__()
-        assert disc_loss in ["hinge", "vanilla"]      
+        assert disc_loss in ["hinge", "vanilla", "leastsquare"]
         self.codebook_weight = codebook_weight
         self.pixel_weight = pixelloss_weight
         self.perceptual_loss = LPIPS().eval()
@@ -49,10 +56,13 @@ class VQLPIPSWithDiscriminator(nn.Module):
                                                  ndf=disc_ndf
                                                  ).apply(weights_init)
         self.discriminator_iter_start = disc_start
+        self.disc_loss_type = disc_loss
         if disc_loss == "hinge":
             self.disc_loss = hinge_d_loss
         elif disc_loss == "vanilla":
             self.disc_loss = vanilla_d_loss
+        elif disc_loss == "leastsquare":
+            self.disc_loss = leastsquare_d_loss
         else:
             raise ValueError(f"Unknown GAN loss '{disc_loss}'.")
         print(f"VQLPIPSWithDiscriminator running with {disc_loss} loss.")
@@ -95,7 +105,10 @@ class VQLPIPSWithDiscriminator(nn.Module):
             else:
                 assert self.disc_conditional
                 logits_fake = self.discriminator(torch.cat((reconstructions.contiguous(), cond), dim=1))
-            g_loss = -torch.mean(logits_fake)
+            if self.disc_loss_type == "leastsquare":
+                g_loss = torch.mean(torch.square(logits_fake - 1.))
+            else:
+                g_loss = -torch.mean(logits_fake)
 
             try:
                 d_weight = self.calculate_adaptive_weight(nll_loss, g_loss, last_layer=last_layer)
