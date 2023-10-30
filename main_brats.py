@@ -313,6 +313,15 @@ class ImageLogger(Callback):
         self.log_img(pl_module, batch, batch_idx, split="val")
 
 
+class Validation(Callback):
+    def __init__(self):
+        print("init validation callback")
+
+    def on_train_epoch_end(self, *args, **kwargs):
+        print("train epoch end")
+        pdb.set_trace()
+        print("xxxxx")
+
 
 if __name__ == "__main__":
     # custom parser to specify config files, train, test and debug mode,
@@ -512,6 +521,11 @@ if __name__ == "__main__":
                     "batch_frequency": 750,
                     "max_images": 4,
                     "clamp": True
+                }
+            },
+            "validation": {
+                "target": "main_brats.Validation",
+                "params": {
                 }
             },
             "learning_rate_logger": {
