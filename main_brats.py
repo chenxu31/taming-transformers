@@ -316,9 +316,9 @@ class ImageLogger(Callback):
 
 
 class Validation(Callback):
-    def __init__(self, data_dir, modality, n_slices):
+    def __init__(self, data_dir, modality, ckptdir, n_slices):
         self.n_slices = n_slices
-        self.cur_epoch = 0
+        self.ckptdir = ckptdir
         self.best_psnr = 0
 
         if modality == "t1":
@@ -329,7 +329,6 @@ class Validation(Callback):
             assert 0
 
     def on_train_epoch_end(self, trainer, pl_module):
-        self.cur_epoch += 1
         pl_module.eval()
 
         patch_shape = (self.n_slices, self.val_data.shape[2], self.val_data.shape[3])
@@ -344,7 +343,7 @@ class Validation(Callback):
         print("Val psnr:%f/%f" % (psnr_list.mean(), psnr_list.std()))
         pl_module.train()
 
-        if self.cur_epoch >= 100:
+        if trainer.current_epoch >= 100:
             if psnr_list.mean() >= self.best_psnr:
                 self.best_psnr = psnr_list.mean()
                 trainer.save_checkpoint(os.path.join(self.ckptdir, "best.ckpt"))
