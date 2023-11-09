@@ -41,7 +41,7 @@ def instantiate_from_config(config):
 
 
 def main(device, args):
-    ckpt_file = os.path.join(args.log_dir, "checkpoints", "last.ckpt")
+    ckpt_file = os.path.join(args.log_dir, "checkpoints", "best.ckpt")
     config_files = sorted(glob.glob(os.path.join(args.log_dir, "configs", "*.yaml")))
     configs = [OmegaConf.load(cfg) for cfg in config_files]
     config = OmegaConf.merge(*configs).model
