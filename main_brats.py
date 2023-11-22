@@ -16,8 +16,10 @@ import h5py
 
 
 if platform.system() == 'Windows':
+    NUM_WORKERS = 0
     sys.path.append(r"E:\我的坚果云\sourcecode\python\util")
 else:
+    NUM_WORKERS = 12
     sys.path.append("/home/chenxu/我的坚果云/sourcecode/python/util")
 
 import common_metrics
@@ -316,14 +318,19 @@ class ImageLogger(Callback):
 
 
 class Validation(Callback):
-    def __init__(self, data_dir, modality, ckptdir, n_slices):
+    def __init__(self, data_dir, modality, ckptdir, n_slices, start_epoch):
         self.n_slices = n_slices
         self.ckptdir = ckptdir
+        self.start_epoch = start_epoch
         self.best_psnr = 0
 
         if modality == "t1":
+            #f = h5py.File(os.path.join(data_dir, "train_t1.h5"), "r")
+            #self.val_data = np.array(f["data"][0:1, :, :, :])
             self.val_data, _ = common_brats.load_test_data(data_dir, "val")
         elif modality == "t2":
+            #f = h5py.File(os.path.join(data_dir, "train_t2.h5"), "r")
+            #self.val_data = np.array(f["data"][0:1, :, :, :])
             _, self.val_data = common_brats.load_test_data(data_dir, "val")
         else:
             assert 0
@@ -343,7 +350,7 @@ class Validation(Callback):
         print("Val psnr:%f/%f" % (psnr_list.mean(), psnr_list.std()))
         pl_module.train()
 
-        if trainer.current_epoch >= 100:
+        if trainer.current_epoch >= self.start_epoch:
             if psnr_list.mean() >= self.best_psnr:
                 self.best_psnr = psnr_list.mean()
                 trainer.save_checkpoint(os.path.join(self.ckptdir, "best.ckpt"))
@@ -527,6 +534,10 @@ if __name__ == "__main__":
         modelckpt_cfg = OmegaConf.merge(default_modelckpt_cfg, modelckpt_cfg)
         trainer_kwargs["checkpoint_callback"] = instantiate_from_config(modelckpt_cfg)
 
+        # data
+        brats_dataset = common_brats.Dataset(opt.data_dir, opt.modality, n_slices=config.model.params.ddconfig.in_channels, debug=0, data_augment=1)
+        data = DataLoader(brats_dataset, batch_size=opt.batch_size, shuffle=True, pin_memory=True, drop_last=True, num_workers=NUM_WORKERS)
+
         # add callback which sets up log directory
         default_callbacks_cfg = {
             "setup_callback": {
@@ -556,6 +567,7 @@ if __name__ == "__main__":
                     "modality": opt.modality,
                     "ckptdir": ckptdir,
                     "n_slices": config.model.params.ddconfig.in_channels,
+                    "start_epoch": config.model.params.lossconfig.params.disc_start // len(data) + 1
                 }
             },
             "learning_rate_logger": {
@@ -576,8 +588,8 @@ if __name__ == "__main__":
         trainer = Trainer.from_argparse_args(trainer_opt, **trainer_kwargs)
 
         # data
-        brats_dataset = common_brats.Dataset(opt.data_dir, opt.modality, n_slices=config.model.params.ddconfig.in_channels)
-        data = DataLoader(brats_dataset, batch_size=opt.batch_size, shuffle=True, pin_memory=True, drop_last=True)
+        #brats_dataset = common_brats.Dataset(opt.data_dir, opt.modality, n_slices=config.model.params.ddconfig.in_channels, debug=0, data_augment=1)
+        #data = DataLoader(brats_dataset, batch_size=opt.batch_size, shuffle=True, pin_memory=True, drop_last=True, num_workers=NUM_WORKERS)
 
         # configure learning rate
         bs, base_lr = opt.batch_size, config.model.base_learning_rate
