@@ -1,12 +1,12 @@
 model:
-  base_learning_rate: 4.5e-6
+  base_learning_rate: 1e-4 #4.5e-6
   target: taming.models.vqgan.VQModel
   params:
-    embed_dim: 192
+    embed_dim: 256
     n_embed: 256
     ddconfig:
       double_z: False
-      z_channels: 192
+      z_channels: 256
       resolution: 240
       in_channels: 1
       out_ch: 1
@@ -23,7 +23,7 @@ model:
         disc_conditional: False
         disc_in_channels: 1
         perceptual_weight: 0
-        disc_start: 100000
+        disc_start: 20000000
         disc_weight: 0.8
         codebook_weight: 1.0
 

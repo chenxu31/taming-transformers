@@ -354,6 +354,8 @@ class Validation(Callback):
             if psnr_list.mean() >= self.best_psnr:
                 self.best_psnr = psnr_list.mean()
                 trainer.save_checkpoint(os.path.join(self.ckptdir, "best.ckpt"))
+        else:
+            trainer.save_checkpoint(os.path.join(self.ckptdir, "last.ckpt"))
 
 
 if __name__ == "__main__":
@@ -535,7 +537,7 @@ if __name__ == "__main__":
         trainer_kwargs["checkpoint_callback"] = instantiate_from_config(modelckpt_cfg)
 
         # data
-        brats_dataset = common_brats.Dataset(opt.data_dir, opt.modality, n_slices=config.model.params.ddconfig.in_channels, debug=0, data_augment=1)
+        brats_dataset = common_brats.Dataset(opt.data_dir, opt.modality, n_slices=config.model.params.ddconfig.in_channels, debug=0, data_augment=0)
         data = DataLoader(brats_dataset, batch_size=opt.batch_size, shuffle=True, pin_memory=True, drop_last=True, num_workers=NUM_WORKERS)
 
         # add callback which sets up log directory
