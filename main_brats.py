@@ -147,6 +147,15 @@ def get_parser(**parser_kwargs):
         choices=["t1", "t2"],
         help="modality",
     )
+    parser.add_argument(
+        "--do_debug",
+        type=int,
+        nargs="?",
+        const=True,
+        default=0,
+        choices=[0, 1],
+        help="do debug",
+    )
 
     return parser
 
@@ -318,20 +327,25 @@ class ImageLogger(Callback):
 
 
 class Validation(Callback):
-    def __init__(self, data_dir, modality, ckptdir, n_slices, start_epoch):
+    def __init__(self, data_dir, modality, debug, ckptdir, n_slices, start_epoch):
         self.n_slices = n_slices
         self.ckptdir = ckptdir
+        self.debug = debug
         self.start_epoch = start_epoch
         self.best_psnr = 0
 
         if modality == "t1":
-            #f = h5py.File(os.path.join(data_dir, "train_t1.h5"), "r")
-            #self.val_data = np.array(f["data"][0:1, :, :, :])
-            self.val_data, _ = common_brats.load_test_data(data_dir, "val")
+            if debug:
+                f = h5py.File(os.path.join(data_dir, "train_t1.h5"), "r")
+                self.val_data = np.array(f["data"][0:1, :, :, :])
+            else:
+                self.val_data, _ = common_brats.load_test_data(data_dir, "val")
         elif modality == "t2":
-            #f = h5py.File(os.path.join(data_dir, "train_t2.h5"), "r")
-            #self.val_data = np.array(f["data"][0:1, :, :, :])
-            _, self.val_data = common_brats.load_test_data(data_dir, "val")
+            if debug:
+                f = h5py.File(os.path.join(data_dir, "train_t2.h5"), "r")
+                self.val_data = np.array(f["data"][0:1, :, :, :])
+            else:
+                _, self.val_data = common_brats.load_test_data(data_dir, "val")
         else:
             assert 0
 
@@ -537,7 +551,7 @@ if __name__ == "__main__":
         trainer_kwargs["checkpoint_callback"] = instantiate_from_config(modelckpt_cfg)
 
         # data
-        brats_dataset = common_brats.Dataset(opt.data_dir, opt.modality, n_slices=config.model.params.ddconfig.in_channels, debug=0, data_augment=0)
+        brats_dataset = common_brats.Dataset(opt.data_dir, opt.modality, n_slices=config.model.params.ddconfig.in_channels, debug=opt.do_debug, data_augment=0)
         data = DataLoader(brats_dataset, batch_size=opt.batch_size, shuffle=True, pin_memory=True, drop_last=True, num_workers=NUM_WORKERS)
 
         # add callback which sets up log directory
@@ -567,6 +581,7 @@ if __name__ == "__main__":
                 "params": {
                     "data_dir": opt.data_dir,
                     "modality": opt.modality,
+                    "debug": opt.do_debug,
                     "ckptdir": ckptdir,
                     "n_slices": config.model.params.ddconfig.in_channels,
                     "start_epoch": config.model.params.lossconfig.params.disc_start // len(data) + 1
@@ -622,8 +637,13 @@ if __name__ == "__main__":
                 import pudb; pudb.set_trace()
 
         import signal
-        signal.signal(signal.SIGUSR1, melk)
-        signal.signal(signal.SIGUSR2, divein)
+
+        if platform.system() == 'Windows':
+            signal.signal(signal.SIGTERM, melk)
+            signal.signal(signal.SIGTERM, divein)
+        else:
+            signal.signal(signal.SIGUSR1, melk)
+            signal.signal(signal.SIGUSR2, divein)
 
         # run
         if opt.train:
