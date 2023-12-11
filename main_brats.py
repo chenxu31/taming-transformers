@@ -4,6 +4,7 @@ import numpy as np
 from PIL import Image
 import torch
 import torchvision
+from torchvision import transforms
 from torch.utils.data import random_split, DataLoader, Dataset
 import pytorch_lightning as pl
 from pytorch_lightning import seed_everything
@@ -171,6 +172,73 @@ def instantiate_from_config(config):
     if not "target" in config:
         raise KeyError("Expected key `target` to instantiate.")
     return get_obj_from_str(config["target"])(**config.get("params", dict()))
+
+
+class DatasetAll(torch.utils.data.Dataset):
+    def __init__(self, data_dir, modality, n_slices=1, debug=0, data_augment=False):
+        assert modality in ("t1", "t2")
+
+        self.data_dir = data_dir
+        self.modality = modality
+        self.n_slices = n_slices
+        self.debug = debug
+        self.data_augment = data_augment
+
+        self.load_data()
+
+        transforms_options = [transforms.ToTensor(),]
+
+        if data_augment:
+            transforms_options.extend([
+                transforms.RandomRotation(5, fill=-1, interpolation=transforms.InterpolationMode.BILINEAR),
+                transforms.RandomResizedCrop((self.patch_height, self.patch_width), scale=(0.8, 1.0),
+                                             antialias=None, interpolation=transforms.InterpolationMode.BILINEAR),
+                transforms.RandomHorizontalFlip(),
+            ])
+
+        self.transform = transforms.Compose(transforms_options)
+
+    def __len__(self):
+        return self.num_subjects * (self.data_slices - self.n_slices + 1)
+
+    def __getitem__(self, idx):
+        subject_id = idx // (self.data_slices - self.n_slices + 1)
+        slice_id = idx % (self.data_slices - self.n_slices + 1)
+
+        data_f = self.data_f1
+        if subject_id >= self.num_subjects1:
+            subject_id -= self.num_subjects1
+            data_f = self.data_f2
+
+            if subject_id >= self.num_subjects2:
+                subject_id -= self.num_subjects2
+                data_f = self.data_f3
+
+        image = np.array(data_f["data"][subject_id, slice_id: slice_id + self.n_slices, :, :]).transpose((1, 2, 0))
+
+        seed = torch.random.seed()
+        torch.random.manual_seed(seed)
+        image = self.transform(image)
+
+        ret = {
+            "image": image,
+        }
+
+        return ret
+
+    def load_data(self):
+        self.data_f1 = h5py.File(os.path.join(self.data_dir, "train_%s.h5" % self.modality), "r")
+        self.data_f2 = h5py.File(os.path.join(self.data_dir, "val_%s.h5" % self.modality), "r")
+        self.data_f3 = h5py.File(os.path.join(self.data_dir, "test_%s.h5" % self.modality), "r")
+        self.num_subjects1, self.data_slices, self.patch_height, self.patch_width = self.data_f1["data"].shape
+        self.num_subjects2 = self.data_f2["data"].shape[0]
+        self.num_subjects3 = self.data_f3["data"].shape[0]
+        self.num_subjects = self.num_subjects1 + self.num_subjects2 + self.num_subjects3
+
+        if self.debug:
+            self.num_subjects = 10
+
+        self.patch_shape = (self.n_slices, self.patch_height, self.patch_width)
 
 
 class WrappedDataset(Dataset):
