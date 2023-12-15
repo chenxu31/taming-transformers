@@ -219,12 +219,13 @@ class VectorQuantizer2(nn.Module):
     # NOTE: due to a bug the beta term was applied to the wrong term. for
     # backwards compatibility we use the buggy version by default, but you can
     # specify legacy=False to fix it.
-    def __init__(self, n_e, e_dim, beta, remap=None, unknown_index="random",
+    def __init__(self, n_e, e_dim, beta, kl_weight=0., remap=None, unknown_index="random",
                  sane_index_shape=False, legacy=False):
         super().__init__()
         self.n_e = n_e
         self.e_dim = e_dim
         self.beta = beta
+        self.kl_weight = kl_weight
         self.legacy = legacy
 
         self.embedding = nn.Embedding(self.n_e, self.e_dim)
@@ -309,6 +310,11 @@ class VectorQuantizer2(nn.Module):
         if self.sane_index_shape:
             min_encoding_indices = min_encoding_indices.reshape(
                 z_q.shape[0], z_q.shape[2], z_q.shape[3])
+
+        if self.kl_weight > 0:
+            p_post = torch.nn.functional.one_hot(min_encoding_indices, num_classes=self.n_e).type(torch.float32).mean(0)
+            kl_loss = torch.sum(p_post * torch.log(p_post * self.n_e + 1e-10))
+            loss = loss + self.kl_weight * kl_loss
 
         return z_q, loss, (perplexity, min_encodings, min_encoding_indices)
 

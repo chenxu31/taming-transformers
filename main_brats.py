@@ -236,7 +236,7 @@ class DatasetAll(torch.utils.data.Dataset):
         self.num_subjects = self.num_subjects1 + self.num_subjects2 + self.num_subjects3
 
         if self.debug:
-            self.num_subjects = 10
+            self.num_subjects = 1
 
         self.patch_shape = (self.n_slices, self.patch_height, self.patch_width)
 
@@ -401,6 +401,7 @@ class Validation(Callback):
         self.debug = debug
         self.start_epoch = start_epoch
         self.best_psnr = 0
+        self.lr_schedulers = None
 
         if modality == "t1":
             if debug:
@@ -418,6 +419,9 @@ class Validation(Callback):
             assert 0
 
     def on_train_epoch_end(self, trainer, pl_module):
+        if self.lr_schedulers is None:
+            self.lr_schedulers = [torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, mode="max", patience=10, cooldown=10, min_lr=1e-6, verbose=True) for optimizer in trainer.optimizers]
+
         pl_module.eval()
 
         patch_shape = (self.n_slices, self.val_data.shape[2], self.val_data.shape[3])
@@ -427,17 +431,22 @@ class Validation(Callback):
                 syn_im = common_net.produce_results(pl_module.device, pl_module, [patch_shape, ], [self.val_data[i], ],
                                                     data_shape=self.val_data.shape[1:], patch_shape=patch_shape,
                                                     is_seg=False, batch_size=16)
+                syn_im[self.val_data[i] <= -1.] = -1.
                 psnr_list[i] = common_metrics.psnr(syn_im, self.val_data[i])
 
         print("Val psnr:%f/%f" % (psnr_list.mean(), psnr_list.std()))
         pl_module.train()
 
+        cur_psnr = psnr_list.mean()
         if trainer.current_epoch >= self.start_epoch:
-            if psnr_list.mean() >= self.best_psnr:
-                self.best_psnr = psnr_list.mean()
+            if cur_psnr >= self.best_psnr:
+                self.best_psnr = cur_psnr
                 trainer.save_checkpoint(os.path.join(self.ckptdir, "best.ckpt"))
         else:
             trainer.save_checkpoint(os.path.join(self.ckptdir, "last.ckpt"))
+
+        for scheduler in self.lr_schedulers:
+            scheduler.step(cur_psnr)
 
 
 if __name__ == "__main__":
