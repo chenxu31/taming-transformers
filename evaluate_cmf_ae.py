@@ -41,7 +41,7 @@ def instantiate_from_config(config):
 
 
 def main(device, args):
-    ckpt_file = os.path.join(args.log_dir, "checkpoints", "last.ckpt")
+    ckpt_file = os.path.join(args.log_dir, "checkpoints", "best.ckpt")
     config_files = sorted(glob.glob(os.path.join(args.log_dir, "configs", "*.yaml")))
     configs = [OmegaConf.load(cfg) for cfg in config_files]
     config = OmegaConf.merge(*configs).model
@@ -73,7 +73,6 @@ def main(device, args):
             syn_im = common_net.produce_results(device, model, [patch_shape, ], [test_data[i], ],
                                                 data_shape=test_data.shape[1:], patch_shape=patch_shape, is_seg=False,
                                                 batch_size=16)
-            syn_im = syn_im.clip(-1, 1)
             psnr_list[i] = common_metrics.psnr(syn_im, test_data[i])
 
             if args.output_dir:

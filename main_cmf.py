@@ -16,11 +16,14 @@ import h5py
 
 
 if platform.system() == 'Windows':
+    NUM_WORKERS = 0
     sys.path.append(r"E:\我的坚果云\sourcecode\python\util")
 else:
+    NUM_WORKERS = 12
     sys.path.append("/home/chenxu/我的坚果云/sourcecode/python/util")
 
 import common_cmf_pt as common_cmf
+import common_metrics
 
 
 def get_obj_from_str(string, reload=False):
@@ -142,6 +145,15 @@ def get_parser(**parser_kwargs):
         default="ct",
         choices=["ct", "mri"],
         help="modality",
+    )
+    parser.add_argument(
+        "--do_debug",
+        type=int,
+        nargs="?",
+        const=True,
+        default=0,
+        choices=[0, 1],
+        help="do debug",
     )
 
     return parser
@@ -313,6 +325,61 @@ class ImageLogger(Callback):
         self.log_img(pl_module, batch, batch_idx, split="val")
 
 
+class Validation(Callback):
+    def __init__(self, data_dir, modality, debug, ckptdir, n_slices, start_epoch, lr_scheduler=True):
+        self.n_slices = n_slices
+        self.ckptdir = ckptdir
+        self.debug = debug
+        self.start_epoch = start_epoch
+        self.best_psnr = 0
+        self.lr_schedulers = lr_scheduler
+
+        if modality == "mri":
+            if debug:
+                f = h5py.File(os.path.join(data_dir, "unpaired_mri.h5"), "r")
+                self.val_data = np.array(f["mri"][0:1, :, :, :])
+            else:
+                self.val_data, _, _ = common_cmf.load_test_data(data_dir)
+        elif modality == "ct":
+            if debug:
+                f = h5py.File(os.path.join(data_dir, "unpaired_ct.h5"), "r")
+                self.val_data = np.array(f["ct"][0:1, :, :, :])
+            else:
+                _, self.val_data, _ = common_cmf.load_test_data(data_dir)
+        else:
+            assert 0
+
+    def on_train_epoch_end(self, trainer, pl_module):
+        if self.lr_schedulers is True:
+            self.lr_schedulers = [torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, mode="max", patience=50, cooldown=50, min_lr=1e-6, verbose=True) for optimizer in trainer.optimizers]
+
+        pl_module.eval()
+
+        patch_shape = (self.n_slices, self.val_data.shape[2], self.val_data.shape[3])
+        psnr_list = np.zeros((self.val_data.shape[0],), np.float32)
+        with torch.no_grad():
+            for i in range(self.val_data.shape[0]):
+                syn_im = common_net.produce_results(pl_module.device, pl_module, [patch_shape, ], [self.val_data[i], ],
+                                                    data_shape=self.val_data.shape[1:], patch_shape=patch_shape,
+                                                    is_seg=False, batch_size=16)
+                syn_im[self.val_data[i] <= -1.] = -1.
+                psnr_list[i] = common_metrics.psnr(syn_im, self.val_data[i])
+
+        print("Val psnr:%f/%f" % (psnr_list.mean(), psnr_list.std()))
+        pl_module.train()
+
+        cur_psnr = psnr_list.mean()
+        if trainer.current_epoch >= self.start_epoch:
+            if cur_psnr >= self.best_psnr:
+                self.best_psnr = cur_psnr
+                trainer.save_checkpoint(os.path.join(self.ckptdir, "best.ckpt"))
+        else:
+            trainer.save_checkpoint(os.path.join(self.ckptdir, "last.ckpt"))
+
+        if isinstance(self.lr_schedulers, list):
+            for scheduler in self.lr_schedulers:
+                scheduler.step(cur_psnr)
+
 
 if __name__ == "__main__":
     # custom parser to specify config files, train, test and debug mode,
@@ -462,7 +529,10 @@ if __name__ == "__main__":
             },
         }
         default_logger_cfg = default_logger_cfgs["testtube"]
-        logger_cfg = lightning_config.logger or OmegaConf.create()
+        if "logger" in lightning_config:
+            logger_cfg = lightning_config.logger
+        else:
+            logger_cfg = OmegaConf.create()
         logger_cfg = OmegaConf.merge(default_logger_cfg, logger_cfg)
         trainer_kwargs["logger"] = instantiate_from_config(logger_cfg)
 
@@ -482,14 +552,21 @@ if __name__ == "__main__":
             default_modelckpt_cfg["params"]["monitor"] = model.monitor
             default_modelckpt_cfg["params"]["save_top_k"] = 3
 
-        modelckpt_cfg = lightning_config.modelcheckpoint or OmegaConf.create()
+        if "modelcheckpoint" in lightning_config:
+            modelckpt_cfg = lightning_config.modelcheckpoint
+        else:
+            modelckpt_cfg = OmegaConf.create()
         modelckpt_cfg = OmegaConf.merge(default_modelckpt_cfg, modelckpt_cfg)
         trainer_kwargs["checkpoint_callback"] = instantiate_from_config(modelckpt_cfg)
+
+        # data
+        cmf_dataset = common_cmf.Dataset(opt.data_dir, opt.modality, n_slices=config.model.params.ddconfig.in_channels, data_augment=True)
+        data = DataLoader(cmf_dataset, batch_size=opt.batch_size, shuffle=True, pin_memory=True, drop_last=True, num_workers=NUM_WORKERS)
 
         # add callback which sets up log directory
         default_callbacks_cfg = {
             "setup_callback": {
-                "target": "main_pelvic.SetupCallback",
+                "target": "main_cmf.SetupCallback",
                 "params": {
                     "resume": opt.resume,
                     "now": now,
@@ -500,32 +577,42 @@ if __name__ == "__main__":
                     "lightning_config": lightning_config,
                 }
             },
-            "image_logger": {
-                "target": "main_pelvic.ImageLogger",
+            #"image_logger": {
+            #    "target": "main_cmf.ImageLogger",
+            #    "params": {
+            #        "batch_frequency": 750,
+            #        "max_images": 4,
+            #        "clamp": True
+            #    }
+            #},
+            "validation": {
+                "target": "main_cmf.Validation",
                 "params": {
-                    "batch_frequency": 750,
-                    "max_images": 4,
-                    "clamp": True
+                    "data_dir": opt.data_dir,
+                    "modality": opt.modality,
+                    "debug": opt.do_debug,
+                    "ckptdir": ckptdir,
+                    "n_slices": config.model.params.ddconfig.in_channels,
+                    "start_epoch": config.model.params.lossconfig.params.disc_start // len(data) + 1
                 }
             },
             "learning_rate_logger": {
-                "target": "main_pelvic.LearningRateMonitor",
+                "target": "main_cmf.LearningRateMonitor",
                 "params": {
                     "logging_interval": "step",
                     #"log_momentum": True
                 }
             },
         }
-        callbacks_cfg = lightning_config.callbacks or OmegaConf.create()
+        if "callbacks" in lightning_config:
+            callbacks_cfg = lightning_config.callbacks
+        else:
+            callbacks_cfg = OmegaConf.create()
         callbacks_cfg = OmegaConf.merge(default_callbacks_cfg, callbacks_cfg)
         trainer_kwargs["callbacks"] = [instantiate_from_config(callbacks_cfg[k]) for k in callbacks_cfg]
 
         trainer = Trainer.from_argparse_args(trainer_opt, **trainer_kwargs)
 
-        # data
-        cmf_dataset = common_cmf.Dataset(opt.data_dir, opt.modality, n_slices=config.model.params.ddconfig.in_channels, data_augment=True)
-        data = DataLoader(cmf_dataset, batch_size=opt.batch_size, shuffle=True, pin_memory=True, drop_last=True)
-        print(opt.batch_size, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
 
         # configure learning rate
         bs, base_lr = opt.batch_size, config.model.base_learning_rate
@@ -533,10 +620,13 @@ if __name__ == "__main__":
             ngpu = len(lightning_config.trainer.gpus.strip(",").split(','))
         else:
             ngpu = 1
-        accumulate_grad_batches = lightning_config.trainer.accumulate_grad_batches or 1
+        if "accumulate_grad_batches" in lightning_config.trainer:
+            accumulate_grad_batches = lightning_config.trainer.accumulate_grad_batches
+        else:
+            accumulate_grad_batches = 1
         print(f"accumulate_grad_batches = {accumulate_grad_batches}")
         lightning_config.trainer.accumulate_grad_batches = accumulate_grad_batches
-        model.learning_rate = accumulate_grad_batches * ngpu * bs * base_lr
+        model.learning_rate = base_lr #accumulate_grad_batches * ngpu * bs * base_lr
         print("Setting learning rate to {:.2e} = {} (accumulate_grad_batches) * {} (num_gpus) * {} (batchsize) * {:.2e} (base_lr)".format(
             model.learning_rate, accumulate_grad_batches, ngpu, bs, base_lr))
 
@@ -553,8 +643,12 @@ if __name__ == "__main__":
                 import pudb; pudb.set_trace()
 
         import signal
-        signal.signal(signal.SIGUSR1, melk)
-        signal.signal(signal.SIGUSR2, divein)
+        if platform.system() == 'Windows':
+            signal.signal(signal.SIGTERM, melk)
+            signal.signal(signal.SIGTERM, divein)
+        else:
+            signal.signal(signal.SIGUSR1, melk)
+            signal.signal(signal.SIGUSR2, divein)
 
         # run
         if opt.train:
