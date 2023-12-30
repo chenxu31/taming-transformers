@@ -23,6 +23,7 @@ else:
     sys.path.append("/home/chenxu/我的坚果云/sourcecode/python/util")
 
 import common_cmf_pt as common_cmf
+import common_net_pt as common_net
 import common_metrics
 
 
@@ -560,7 +561,7 @@ if __name__ == "__main__":
         trainer_kwargs["checkpoint_callback"] = instantiate_from_config(modelckpt_cfg)
 
         # data
-        cmf_dataset = common_cmf.Dataset(opt.data_dir, opt.modality, n_slices=config.model.params.ddconfig.in_channels, data_augment=True)
+        cmf_dataset = common_cmf.Dataset(opt.data_dir, opt.modality, n_slices=config.model.params.ddconfig.in_channels, debug=opt.do_debug, data_augment=True)
         data = DataLoader(cmf_dataset, batch_size=opt.batch_size, shuffle=True, pin_memory=True, drop_last=True, num_workers=NUM_WORKERS)
 
         # add callback which sets up log directory
