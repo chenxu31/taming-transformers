@@ -338,13 +338,13 @@ class Validation(Callback):
         if modality == "mri":
             if debug:
                 f = h5py.File(os.path.join(data_dir, "unpaired_mri.h5"), "r")
-                self.val_data = np.array(f["mri"][0:1, :, :, :])
+                self.val_data = common_cmf.pad_data(np.array(f["mri"][0:1, :, :, :]))
             else:
                 self.val_data, _, _ = common_cmf.load_test_data(data_dir)
         elif modality == "ct":
             if debug:
                 f = h5py.File(os.path.join(data_dir, "unpaired_ct.h5"), "r")
-                self.val_data = np.array(f["ct"][0:1, :, :, :])
+                self.val_data = common_cmf.pad_data(np.array(f["ct"][0:1, :, :, :]))
             else:
                 _, self.val_data, _ = common_cmf.load_test_data(data_dir)
         else:
