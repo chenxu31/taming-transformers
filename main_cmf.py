@@ -210,7 +210,7 @@ class DatasetAll(torch.utils.data.Dataset):
             subject_id -= self.num_subjects1
             data_f = self.data_f2
 
-        image = common_cmf.pad_data(np.array(data_f["data"][subject_id, slice_id: slice_id + self.n_slices, :, :])).transpose((1, 2, 0))
+        image = common_cmf.pad_data(np.array(data_f[self.modality][subject_id, slice_id: slice_id + self.n_slices, :, :])).transpose((1, 2, 0))
 
         seed = torch.random.seed()
         torch.random.manual_seed(seed)
