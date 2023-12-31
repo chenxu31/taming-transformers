@@ -227,7 +227,7 @@ class DatasetAll(torch.utils.data.Dataset):
         self.data_f2 = h5py.File(os.path.join(self.data_dir, "paired_mri_ct.h5"), "r")
         self.num_subjects1 = self.data_f1[self.modality].shape[0]
         self.data_slices, self.patch_height, self.patch_width = common_cmf.pad_data(
-            numpy.array(self.data_f1[self.modality][0:1, :, :, :], numpy.float32)).shape[1:]
+            np.array(self.data_f1[self.modality][0:1, :, :, :], np.float32)).shape[1:]
         self.num_subjects2 = self.data_f2[self.modality].shape[0]
         self.num_subjects = self.num_subjects1 + self.num_subjects2
 
