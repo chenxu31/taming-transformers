@@ -73,6 +73,7 @@ def main(device, args):
             syn_im = common_net.produce_results(device, model, [patch_shape, ], [test_data[i], ],
                                                 data_shape=test_data.shape[1:], patch_shape=patch_shape, is_seg=False,
                                                 batch_size=16)
+            syn_im[test_data[i] <= -1.] = -1.
             psnr_list[i] = common_metrics.psnr(syn_im, test_data[i])
 
             if args.output_dir:
@@ -89,10 +90,10 @@ def main(device, args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--gpu', type=int, default=0, help="gpu device id")
-    parser.add_argument('--data_dir', type=str, default=r'/home/chenxu/datasets/pelvic/h5_data_nonrigid/', help='path of the dataset')
-    parser.add_argument('--log_dir', type=str, default=r'/home/chenxu/training/logs/taming/ae_ct_vq/2023-01-09T21-58-22_pelvic_vqgan', help="checkpoint file dir")
+    parser.add_argument('--data_dir', type=str, default=r'/home/chenxu/datasets/cmf', help='path of the dataset')
+    parser.add_argument('--log_dir', type=str, default=r'/home/chenxu/training/checkpoints/vqgan/cmf/ct_64', help="checkpoint file dir")
     parser.add_argument('--output_dir', type=str, default='/home/chenxu/training/test_output/taming/ae_ct_vq', help="the output directory")
-    parser.add_argument('--modality', type=str, default='ct', choices=["ct", "cbct"], help="the output directory")
+    parser.add_argument('--modality', type=str, default='ct', choices=["ct", "mri"], help="the output directory")
 
     args = parser.parse_args()
 
